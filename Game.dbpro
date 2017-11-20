@@ -1,0 +1,82 @@
+; **** Dark BASIC Professional Project File ****
+; **** Written by DarkBASIC Professional Editor ****
+version=DBP1.00
+project name=Game
+
+; **** source file information ****
+main=Game.dba
+final source=_Temp.dbsource
+
+; **** Executable Information  ***
+; build types: exe, media, installer, alone
+executable=Game.exe
+build type=media
+; ** Media file compression **
+compression=NO
+
+; ** Media file encryption **
+encryption=NO
+; ** Display the card options screen window? **
+card options window=NO
+
+; **** debugger information ****
+; If the editor sets this to yes, it is running in debug mode
+CLI=NO
+CommandLineArguments=
+
+; **** display mode information ****
+app title=Game
+
+; graphics mode options: fullscreen, window, desktop, fulldesktop, hidden
+graphics mode=window
+fullscreen resolution=640x480x32
+
+; arbitrary sizes are valid for windowed mode
+window resolution=640x480
+
+; **** External Files Information ****
+
+; **** Media ****
+; Example entries: media1=graphics\*.jpg
+media root path=C:\Users\Curt\Desktop\Dark Basic Professional\Projects\Game\
+media1=DEAD.wav
+media2=DEAD.bmp
+media3=blueg.bmp
+media4=greeng.bmp
+media5=FIRE.wav
+media6=wall2.bmp
+media7=LAVAPAR.bmp
+media8=TECH.WAV
+media9=RETRO.WAV
+media10=LOOP.WAV
+media11=LOOP2.WAV
+media12=RAVE.WAV
+media13=HIT.WAV
+media14=LAVAPAR.BMP
+media15=HEALTH.BMP
+media16=splash.png
+media17=presskey.bmp
+media18=PURPLEG.BMP
+media19=ball.png
+media20=MUSIC.wav
+media21=Player1.bmp
+
+; **** Icons ****
+
+; **** Cursors ****
+
+; **** Version Info ****
+VerComments=
+VerCompany=
+VerFileDesc=
+VerFileNumber=v1.0
+VerInternal=v1.0
+VerCopyright=
+VerTrademark=
+VerFilename=
+VerProduct=
+VerProductNumber=v1.0
+
+; **** To Do ****
+
+; **** Comments ****

@@ -1,0 +1,838 @@
+Rem Project: Game
+Rem Created: Monday, November 13, 2017
+Rem ***** Main Source File *****
+
+GLOBAL DEBUG = FALSE
+
+
+SYNC ON:CLS 0:SYNC RATE 60
+
+SET DISPLAY MODE 1000,800,32
+COLOR BACKDROP 0,0,0
+SET WINDOW POSITION 0,0
+MAXIMIZE WINDOW 
+
+
+type Vector2
+	X as float
+	y as float
+endtype
+
+type Vector3
+	X as float
+	y as float
+	z as float
+endtype
+
+type Vector4
+	X as float
+	y as float
+	z as float
+	w as float
+endtype
+
+Type Physical_body
+	Mass as float
+	Friction as float
+	Speed as float
+	Angle as float
+endtype
+
+type Platform
+	position as vector3
+	Height as integer
+	SURFACE AS Physical_body
+endtype
+
+type player
+	HEALTH as integer
+	SCORE as integer
+	SPEED as float
+	POSITION as Vector3
+	VELOCITY as Vector3 
+	FORCE AS Vector3
+	JUMP_FLAG as boolean  
+	FALLING_FLAG as boolean  	
+	DELTA_TIME as float
+	MASS as float
+endtype
+
+
+type PROJECTILE
+    POSITION AS VECTOR3
+    VELOCITY AS VECTOR3
+    LIFE_SPAN
+endtype
+
+
+Dim PLAYERS(2) as player
+Dim World(10) as Platform
+
+
+#constant Player_1  1 
+#constant Player_2  2 
+
+
+#constant TRUE 1
+#constant FALSE 0
+
+
+#constant xleft   = -300
+#constant xright  =  800
+#constant ztop    =  350
+#constant zbottom = -420
+
+//-------------- Physics Defines -----------------------------------------
+
+GLOBAL GRAVITATIONAL_FORCE AS FLOAT
+GLOBAL DELTA_TIME  AS FLOAT
+GLOBAL X_ACCELERATION  AS FLOAT
+GLOBAL Y_ACCELERATION  AS FLOAT
+GLOBAL Z_ACCELERATION  AS FLOAT
+GLOBAL CURRENT_TIME
+GLOBAL PREVIOUS_TIME = TIMER()
+
+//-------------- Keyboard Defines -----------------------------------------
+
+GLOBAL SPACEKEY_SWITCH
+GLOBAL LEFTKEY_SWITCH
+GLOBAL RIGHTKEY_SWITCH
+GLOBAL UPKEY_SWITCH
+GLOBAL DOWNKEY_SWITCH
+GLOBAL GLOBAL_TIMER
+GLOBAL FIREKEY2_SWITCH 
+
+//-------------- Projectile Defines
+
+#constant BULLET_OFFSET  200
+
+GLOBAL MAX_PROJECTILES = 300
+GLOBAL NUM_OF_PROJECTILES
+
+
+DIM BULLETS(MAX_PROJECTILES) as PROJECTILE
+//__________________LEVEL SETUP ______________________________________________________________________________________________//
+
+#CONSTANT NUM_OF_BACKGROUNDS 5
+#CONSTANT NUM_OF_MUSICS 6
+
+
+GLOBAL PLAYER1WINS
+GLOBAL PLAYER2WINS
+GLOBAL BACK_MUSIC
+GLOBAL BACK_TEXTURE
+
+//______________________________________________________________________________________________________________________________//
+//                           Project Creation Date: 11/13/2017
+//                           Dependencies: SPARKY COLLISION DLL                                                                                   
+//                                                                                                                      
+//                                                                                                                      
+//                                  MAIN GAME LOOP
+//______________________________________________________________________________________________________________________________//
+
+
+INITIALIZE()
+
+PLAYERS(1).JUMP_FLAG = FALSE 
+PLAYERS(1).VELOCITY.X = 0:PLAYERS(1).VELOCITY.Y = 0:PLAYERS(1).VELOCITY.Z = 0
+SHOW SPRITE 5
+SHOW SPRITE 3
+SHOW SPRITE 4
+
+while inkey$() = ""
+sync
+endwhile
+HIDE SPRITE 3
+HIDE SPRITE 4
+HIDE SPRITE 5
+
+WHILE KEYSTATE(1) = 0
+//  SET CURSOR SCREEN WIDTH() / 2, 10
+ //   PRINT BACK_TEXTURE
+ //   SET CURSOR 0,0
+    
+   _INPUT_HANDLER()
+   _PHYSICS()
+   _COLLISION_HANDLER()
+   _UPDATE_PLAYER()
+   
+
+ //   print "Collision:";PLAYER1collision;"  Frames:"; SCREEN FPS()
+//    PRINT "Position X:";PLAYERS(1).POSITION.X;"  Y:";PLAYERS(1).POSITION.Y ; "  Z:";PLAYERS(1).POSITION.Z
+//    PRINT "HIT:"; OBJECT COLLISION(PLAYER_1,0)
+    
+    SET TEXT SIZE 60
+    SET TEXT FONT "POLYGON"
+SET CURSOR 0, 0
+PRINT PLAYER2WINS ;
+
+if PLAYER1WINS < 10 then SET CURSOR 970, 0
+if PLAYER1WINS => 10 then SET CURSOR 945, 0
+PRINT PLAYER1WINS;
+    SET CURSOR 0,0
+
+  sync
+ENDWHILE
+
+
+for count = 0 to 40
+    DELETE IMAGE count
+    DELETE SOUND count
+next
+
+
+for count= 0 to 2000
+	SC_removeObject count
+next
+
+exit 
+
+
+
+
+
+
+function _INPUT_HANDLER()
+
+
+`==================PLAYER 1============================================================================================
+
+	If spacekey() = TRUE AND PLAYERS(1).JUMP_FLAG = FALSE                       
+	     SPACEKEY_SWITCH = TRUE
+	endif
+
+	if SPACEKEY_SWITCH = TRUE and SPACEKEY() = FALSE 
+		SPACEKEY_SWITCH = FALSE													
+	   _FIRE_PROJECTILE(PLAYER_1)
+	endif
+	
+	
+	//IF KEYSTATE(50) = TRUE
+//		_FIRE_PROJECTILE(PLAYER_1)
+//	ENDIF
+	
+	IF leftkey() = true 
+	      YROTATE OBJECT PLAYER_1,OBJECT ANGLE Y(PLAYER_1) - 3
+	endif
+	
+	IF rightkey() = true 
+		 YROTATE OBJECT PLAYER_1,OBJECT ANGLE Y(PLAYER_1) + 3
+	endif
+	
+	
+	
+	IF upkey() = true 
+		 MOVE OBJECT PLAYER_1,7
+		 		 
+		 IF OBJECT POSITION Z(PLAYER_1) > ztop THEN POSITION OBJECT PLAYER_1, OBJECT POSITION X(PLAYER_1),OBJECT POSITION Y(PLAYER_1),ztop
+		 IF OBJECT POSITION Z(PLAYER_1) < zbottom THEN POSITION OBJECT PLAYER_1, OBJECT POSITION X(PLAYER_1),OBJECT POSITION Y(PLAYER_1),zbottom
+	     IF OBJECT POSITION X(PLAYER_1)> xright  THEN POSITION OBJECT PLAYER_1, xright, OBJECT POSITION Y(PLAYER_1),OBJECT POSITION Z(PLAYER_1)
+		 IF OBJECT POSITION X(PLAYER_1)< xleft  THEN POSITION OBJECT PLAYER_1, xleft, OBJECT POSITION Y(PLAYER_1),OBJECT POSITION Z(PLAYER_1)
+	
+	endif
+	
+	IF downkey() = true 
+		 MOVE OBJECT PLAYER_1,-7
+
+   	     IF OBJECT POSITION Z(PLAYER_1) > ztop THEN POSITION OBJECT PLAYER_1, OBJECT POSITION X(PLAYER_1),OBJECT POSITION Y(PLAYER_1),ztop
+		 IF OBJECT POSITION Z(PLAYER_1) < zbottom THEN POSITION OBJECT PLAYER_1, OBJECT POSITION X(PLAYER_1),OBJECT POSITION Y(PLAYER_1),zbottom
+	     IF OBJECT POSITION X(PLAYER_1)> xright  THEN POSITION OBJECT PLAYER_1, xright, OBJECT POSITION Y(PLAYER_1),OBJECT POSITION Z(PLAYER_1)
+		 IF OBJECT POSITION X(PLAYER_1)< xleft THEN POSITION OBJECT PLAYER_1, xleft, OBJECT POSITION Y(PLAYER_1),OBJECT POSITION Z(PLAYER_1)
+	endif
+
+`==================PLAYER 2============================================================================================
+
+	If KEYSTATE(33) = TRUE AND PLAYERS(2).JUMP_FLAG = FALSE                       ////AND PLAYERS(1).JUMP_FLAG = FALSE
+	    FIREKEY2_SWITCH = TRUE
+	endif
+
+	if FIREKEY2_SWITCH = TRUE and KEYSTATE(33) = FALSE 
+		FIREKEY2_SWITCH = FALSE													//PLAYERS(1).JUMP_FLAG      = TRUE
+	   _FIRE_PROJECTILE(PLAYER_2)
+	endif
+		
+		
+//	IF KEYSTATE(50) = TRUE
+	//	_FIRE_PROJECTILE(PLAYER_2)
+	//ENDIF
+	
+	
+	IF KEYSTATE(30) = true 
+	      YROTATE OBJECT PLAYER_2,OBJECT ANGLE Y(PLAYER_2) - 3
+	endif
+	
+	
+	IF KEYSTATE(32) = true 
+		 YROTATE OBJECT PLAYER_2,OBJECT ANGLE Y(PLAYER_2) + 3
+	endif
+	
+	
+	IF KEYSTATE(17) = true 
+	
+		 MOVE OBJECT PLAYER_2,7
+		 
+   	     IF OBJECT POSITION Z(PLAYER_2) > ztop THEN POSITION OBJECT PLAYER_2, OBJECT POSITION X(PLAYER_2),OBJECT POSITION Y(PLAYER_2),ztop
+		 IF OBJECT POSITION Z(PLAYER_2) < zbottom THEN POSITION OBJECT PLAYER_2, OBJECT POSITION X(PLAYER_2),OBJECT POSITION Y(PLAYER_2),zbottom
+	     IF OBJECT POSITION X(PLAYER_2)> xright  THEN POSITION OBJECT PLAYER_2, xright, OBJECT POSITION Y(PLAYER_2),OBJECT POSITION Z(PLAYER_2)
+		 IF OBJECT POSITION X(PLAYER_2)< xleft  THEN POSITION OBJECT PLAYER_2, xleft, OBJECT POSITION Y(PLAYER_2),OBJECT POSITION Z(PLAYER_2)
+	
+	endif
+	
+	IF KEYSTATE(31) = true 
+	
+		 MOVE OBJECT PLAYER_2,-7
+		 
+   	     IF OBJECT POSITION Z(PLAYER_2) > ztop THEN POSITION OBJECT PLAYER_2, OBJECT POSITION X(PLAYER_2),OBJECT POSITION Y(PLAYER_2),ztop
+		 IF OBJECT POSITION Z(PLAYER_2) < zbottom THEN POSITION OBJECT PLAYER_2, OBJECT POSITION X(PLAYER_2),OBJECT POSITION Y(PLAYER_2),zbottom
+	     IF OBJECT POSITION X(PLAYER_2)> xright  THEN POSITION OBJECT PLAYER_2, xright, OBJECT POSITION Y(PLAYER_2),OBJECT POSITION Z(PLAYER_2)
+		 IF OBJECT POSITION X(PLAYER_2)< xleft  THEN POSITION OBJECT PLAYER_2, xleft, OBJECT POSITION Y(PLAYER_2),OBJECT POSITION Z(PLAYER_2)
+
+	endif
+endfunction
+
+
+function _PHYSICS() 
+   _UPDATE_PROJECTILES()
+endfunction
+
+`1.473 <--(GRAVITATIONAL_FORCE * DELTA_TIME)
+
+
+function _COLLISION_HANDLER()
+
+    XPOS# = OBJECT POSITION X(PLAYER_1)
+    YPOS# = OBJECT POSITION Y(PLAYER_1)
+    ZPOS# = OBJECT POSITION Z(PLAYER_1)
+
+    HIT = OBJECT COLLISION(PLAYER_1,0)
+    
+    IF HIT <> 0 
+       DEC XPOS#, GET OBJECT COLLISION X()
+       DEC ZPOS#, GET OBJECT COLLISION Z()
+       PLAYERS(1).POSITION.X = XPOS#
+       PLAYERS(1).POSITION.Y = YPOS#  
+       PLAYERS(1).POSITION.Z = ZPOS#
+    
+    	POSITION OBJECT PLAYER_1,XPOS#,YPOS#,ZPOS#
+    ENDIF
+
+   
+    XPOS# = OBJECT POSITION X(PLAYER_2)
+    YPOS# = OBJECT POSITION Y(PLAYER_2)
+    ZPOS# = OBJECT POSITION Z(PLAYER_2)
+  
+    HIT = OBJECT COLLISION(PLAYER_2,0)
+    IF HIT <> 0 
+        DEC XPOS#, GET OBJECT COLLISION X()
+        DEC ZPOS#, GET OBJECT COLLISION Z() 
+        
+       PLAYERS(2).POSITION.X = XPOS#
+       PLAYERS(2).POSITION.Y = YPOS# 
+       PLAYERS(2).POSITION.Z = ZPOS# 
+ 
+    	POSITION OBJECT PLAYER_2,XPOS#,YPOS#,ZPOS#
+    ENDIF
+
+endfunction
+
+
+function INITIALIZE()
+	
+	SET GLOBAL COLLISION ON
+	DRAW SPRITES LAST 
+	
+	LOAD SOUND "FIRE.WAV",1
+	LOAD SOUND "HIT.WAV",2
+	LOAD SOUND "DEAD.WAV",3
+	LOAD SOUND "MUSIC.WAV",4
+	LOAD SOUND "TECH.WAV",5
+	LOAD SOUND "RETRO.WAV",6
+	LOAD SOUND "LOOP.WAV",7
+	LOAD SOUND "LOOP2.WAV",8
+	LOAD SOUND "RAVE.WAV",9
+	
+	BACK_MUSIC = RND(NUM_OF_MUSICS -1) + 4
+	LOOP SOUND BACK_MUSIC
+	
+	LOAD IMAGE "player1.bmp",2
+	LOAD IMAGE "LAVAPAR.bmp",4
+	
+	LOAD IMAGE "DEAD.BMP",9
+	LOAD IMAGE "LAVAPAR.BMP",10
+	LOAD IMAGE "HEALTH.BMP",11
+	LOAD IMAGE "splash.png",12
+	LOAD IMAGE "presskey.bmp",13
+	LOAD IMAGE "ball.png",14
+	
+	LOAD IMAGE "BLUEG.BMP",15
+	LOAD IMAGE "PURPLEG.BMP",16
+	LOAD IMAGE "GREENG.BMP",17
+	LOAD IMAGE "RAINBOW.BMP",18
+	LOAD IMAGE "WALL2.bmp",19
+	
+	
+	LOAD IMAGE "P1DEAD.BMP",30
+	LOAD IMAGE "P2DEAD.BMP",31
+	
+	SPRITE 1, 250,500,9
+	SPRITE 2, 0,750,11
+	sprite 3,0,0,12
+	sprite 4,395,570,13
+	sprite 5,700,75,14
+	
+	SPRITE 6,200,300,30
+	SPRITE 7,200,300,31
+	
+	HIDE SPRITE 6
+	HIDE SPRITE 7
+
+
+    SHOW SPRITE 2:HIDE SPRITE 1
+
+    MAKE_LEVEL()
+    
+    SET AMBIENT LIGHT 80:COLOR AMBIENT LIGHT RGB(255,255,255)
+   
+    SET LIGHT RANGE 0,1000 
+    POSITION LIGHT 0,650,10,0
+    COLOR LIGHT 0,RGB(0,0,255)
+    SET DIRECTIONAL LIGHT 0,90,90,90
+
+    AUTOCAM OFF
+	GLOBAL_TIMER = TIMER()
+    GRAVITATIONAL_FORCE = .1
+
+	POSITION CAMERA 250,800,-50
+	POINT CAMERA 250,0,-50
+	
+    PLAYERS(1).HEALTH = 100: PLAYERS(2).HEALTH = 100	
+    
+`==================PLAYER 1============================================================================================
+
+	MAKE OBJECT sphere PLAYER_1,30 	
+	TEXTURE OBJECT PLAYER_1, 2
+	MAKE OBJECT CYLINDER 1000,10
+	SET OBJECT CULL 1000,1
+	XROTATE OBJECT 1000,90
+	FIX OBJECT PIVOT 1000
+	ZROTATE OBJECT 1000,90
+	MAKE MESH FROM object 1,1000
+	ADD LIMB PLAYER_1,1,1
+	OFFSET LIMB PLAYER_1,1, 0,0,15
+
+    DELETE OBJECT 1000
+    
+`==================PLAYER 2============================================================================================
+	
+	MAKE OBJECT sphere PLAYER_2,30 //,26,26
+	TEXTURE OBJECT PLAYER_2, 2
+	MAKE OBJECT CYLINDER 1000,10
+	SET OBJECT CULL 1000,1
+	XROTATE OBJECT 1000,90
+	FIX OBJECT PIVOT 1000
+	ZROTATE OBJECT 1000,90
+	XROTATE OBJECT PLAYER_2,180
+	
+	MAKE MESH FROM object 1,1000
+	ADD LIMB PLAYER_2,1,1
+	OFFSET LIMB PLAYER_2,1, 0,0,15
+		
+    DELETE OBJECT 1000
+
+`=======================================================================================================================
+
+	POSITION OBJECT PLAYER_1,xleft,100,0
+	POSITION OBJECT PLAYER_2,xright,100,0
+
+endfunction
+
+
+
+
+
+function MAKE_LEVEL()
+    
+    BACK_TEXTURE = RND(NUM_OF_BACKGROUNDS -1) + 15
+    
+ 	for count = 0 to 10
+		WORLD(count).position.x =  (xleft + 100) + rnd(xright - 100)
+		WORLD(count).position.y = 40
+		WORLD(count).position.z =  (ztop) - rnd(screen height())
+		WORLD(count).Height     = 150
+		WORLD(10).Height     = 150
+		WORLD(0).Height     = 150
+		MAKE OBJECT cube count + 3,100 
+		POSITION OBJECT count + 3,WORLD(count).position.x,100,WORLD(count).position.z
+ 		
+ 		SET OBJECT TEXTURE count + 3, 0, 0, 0
+        TEXTURE OBJECT count + 3, BACK_TEXTURE
+ 	    sc_setupobject count + 3, 0, 2
+    NEXT 
+    
+   
+   	MAKE OBJECT PLANE 999,1200,1000
+	POSITION OBJECT 999,250,50,-100
+    TEXTURE OBJECT 999,BACK_TEXTURE
+	XROTATE OBJECT 999,90
+	SC_SETUPOBJECT 999,0,1
+    
+endfunction
+
+
+
+function _UPDATE_PROJECTILES()
+
+	for count = 0 to MAX_PROJECTILES - 1
+	
+		IF OBJECT EXIST(COUNT + BULLET_OFFSET) = 1
+		
+			OLDX# = BULLETS(count).POSITION.X  
+			OLDY# = BULLETS(count).POSITION.Y  
+			OLDZ# = BULLETS(count).POSITION.Z  
+    		BULLETS(count).POSITION.X = OLDX#  + (BULLETS(count).VELOCITY.X * .1)
+			BULLETS(count).POSITION.Y = OLDY#  + (BULLETS(count).VELOCITY.Y * .1)
+			BULLETS(count).POSITION.Z = OLDZ#  + (BULLETS(count).VELOCITY.Z * .1)
+			INC BULLETS(count).LIFE_SPAN
+			MOVE OBJECT count + BULLET_OFFSET,10
+			HIT = OBJECT COLLISION(count + BULLET_OFFSET,0)
+			
+
+			IF HIT <> 0
+			    HIDE OBJECT count + BULLET_OFFSET
+			    SET OBJECT COLLISION OFF count + BULLET_OFFSET
+			ENDIF   
+			
+			
+			IF HIT = 1 
+			     PLAY SOUND 2
+			     DEC PLAYERS(1).HEALTH,5
+                HIDE OBJECT count + BULLET_OFFSET
+                IF PLAYERS(1).HEALTH =<0 THEN _PLAYER_DEAD(PLAYER_1)
+			ENDIF
+			IF HIT = 2
+			     PLAY SOUND 2
+			     DEC PLAYERS(2).HEALTH,5
+                  HIDE OBJECT count + BULLET_OFFSET
+                 IF PLAYERS(2).HEALTH =<0 THEN _PLAYER_DEAD(PLAYER_2)
+			ENDIF
+			
+	
+			IF BULLETS(count).LIFE_SPAN > 100
+				DELETE OBJECT count + BULLET_OFFSET
+				BULLETS(count).LIFE_SPAN= 0
+				DEC NUM_OF_PROJECTILES
+			endif
+			
+		endif  
+
+	next
+
+endfunction 1
+
+
+
+
+function _FIRE_PROJECTILE(PLAYER)
+
+    PLAY SOUND 1
+	COUNT = BULLET_OFFSET
+	
+	while object exist(count) = 1
+		inc count
+	endwhile
+	
+	IF COUNT - BULLET_OFFSET > MAX_PROJECTILES THEN EXITFUNCTION
+	
+    MAKE OBJECT SPHERE COUNT,5
+	color object count, rgb(0,255,0)
+    
+    ROTATE OBJECT   COUNT, OBJECT ANGLE X(PLAYER) ,OBJECT ANGLE Y(PLAYER),OBJECT ANGLE Z(PLAYER)
+ 	POSITION OBJECT COUNT, OBJECT POSITION X(PLAYER),100,OBJECT POSITION Z(PLAYER)
+	
+	MOVE OBJECT COUNT, 25
+
+    DEC count,BULLET_OFFSET
+    BULLETS(count).VELOCITY.X = 5
+
+	OLDX# = BULLETS(count).POSITION.X  
+	OLDY# = BULLETS(count).POSITION.Y  
+	OLDZ# = BULLETS(count).POSITION.Z  
+		
+	BULLETS(count).POSITION.X = OLDX#  + (BULLETS(count).VELOCITY.X * .1)
+	BULLETS(count).POSITION.Y = OLDY#  + (BULLETS(count).VELOCITY.Y * .1)
+	BULLETS(count).POSITION.Z = OLDZ#  + (BULLETS(count).VELOCITY.Z * .1)
+		
+	MOVE OBJECT count + BULLET_OFFSET,1
+	SET OBJECT COLLISION ON count + BULLET_OFFSET
+endfunction 1
+
+function _PLAYER_DEAD(PLAYERS AS INTEGER)
+	DRAW SPRITES LAST 
+	
+	PLAY SOUND 3
+    HIDE OBJECT PLAYERS
+	
+	IF PLAYERS = 1 THEN SHOW SPRITE 6
+	IF PLAYERS = 2 THEN SHOW SPRITE 7
+
+    IF PLAYERS = 1 THEN INC PLAYER1WINS
+    IF PLAYERS = 2 THEN INC PLAYER2WINS
+
+//============= RESET ALL THE PROJECTILES ======================================================================
+	
+	FOR COUNT = 0 TO MAX_PROJECTILES
+			BULLETS(count).POSITION.X  = 0
+			BULLETS(count).POSITION.Y  = 0
+			BULLETS(count).POSITION.Z  = 0
+			IF OBJECT EXIST (COUNT + BULLET_OFFSET) = 1 
+				POSITION OBJECT (COUNT + BULLET_OFFSET),1000,1000,1000
+			ENDIF
+	NEXT
+//==============================================================================================================	
+
+//====================== SHORT LOOP SO PARTICLES DISPLAY CORRECTLY =============================================
+
+	MAKE PARTICLES 1,10,100,100
+	POSITION PARTICLES 1, OBJECT POSITION X(PLAYERS), OBJECT POSITION Y(PLAYERS), OBJECT POSITION Z(PLAYERS)
+	FOR G = 0 TO 400
+    	SET CURSOR SCREEN WIDTH() / 2 - 180,SCREEN HEIGHT() / 2
+		SYNC
+	NEXT
+//==============================================================================================================	
+
+	WAIT 100
+	DELETE PARTICLES 1
+//==============================================================================================================	
+
+//====================== RANDOMIZE THE BACKGROUND + MUSIC  =====================================================	
+
+	BACK_TEXTURE = RND(NUM_OF_BACKGROUNDS -1) + 15
+//	for count = 0 to 4
+//	     TEXTURE OBJECT COUNT + 3,BACK_TEXTURE
+//	NEXT
+	
+	TEXTURE OBJECT 999,BACK_TEXTURE
+	STOP SOUND BACK_MUSIC
+	BACK_MUSIC = RND(NUM_OF_MUSICS - 1) + 4
+	LOOP SOUND BACK_MUSIC
+
+ 	for count = 0 to 10
+		WORLD(count).position.x =  (xleft + 100) + rnd(xright - 100)
+		WORLD(count).position.z =  (ztop) - rnd(screen height())
+		POSITION OBJECT count + 3,WORLD(count).position.x,100,WORLD(count).position.z
+        TEXTURE OBJECT count + 3, BACK_TEXTURE
+    NEXT 
+
+
+
+//====================RESET PLAYER POSITION AND HEALTH ==========================================================
+
+    PLAYERS(1).HEALTH = 100
+	PLAYERS(2).HEALTH = 100
+	POSITION OBJECT PLAYER_1,xleft,100,0
+	POSITION OBJECT PLAYER_2,xright,100,0
+	SHOW OBJECT PLAYERS
+	
+	SET TEXT SIZE 20
+	
+	HIDE SPRITE 6
+	HIDE SPRITE 7
+ENDFUNCTION
+
+
+
+
+function _UPDATE_PLAYER()
+
+	PLAYERS(1).POSITION.X = OBJECT POSITION X(PLAYER_1):PLAYERS(1).POSITION.Y = OBJECT POSITION Y(PLAYER_1):PLAYERS(1).POSITION.Z = OBJECT POSITION Z(PLAYER_1) 
+	PLAYERS(2).POSITION.X = OBJECT POSITION X(PLAYER_2):PLAYERS(2).POSITION.Y = OBJECT POSITION Y(PLAYER_2):PLAYERS(2).POSITION.Z = OBJECT POSITION Z(PLAYER_2) 
+    
+    POSITION OBJECT PLAYER_1,PLAYERS(1).POSITION.X, PLAYERS(1).POSITION.Y, PLAYERS(1).POSITION.Z	
+    POSITION OBJECT PLAYER_2,PLAYERS(2).POSITION.X, PLAYERS(2).POSITION.Y, PLAYERS(2).POSITION.Z
+             
+    INK RGB(255,0,0):BOX 0,SCREEN HEIGHT() - 30,200,SCREEN HEIGHT() -10
+    INK RGB(255,0,0):BOX SCREEN WIDTH() -200, SCREEN HEIGHT() - 30,SCREEN WIDTH() ,SCREEN HEIGHT() - 10 
+    
+    INK RGB(0,255,0):BOX 0,SCREEN HEIGHT() - 30 ,(PLAYERS(1).HEALTH*2),SCREEN HEIGHT() - 10 
+    INK RGB(0,255,0):BOX SCREEN WIDTH() - (PLAYERS(2).HEALTH*2),SCREEN HEIGHT() - 30,SCREEN WIDTH() ,SCREEN HEIGHT() - 10  
+  	
+endfunction
+
+
+
+
+
+
+
+
+
+
+
+
+// FUNCTION _MOVEWATER()
+//     
+// for i = 1 to watersize
+// for l = 1 to watersize
+//       inc a(i,l)
+//       if a(i,l)>360 then a(i,l)=1
+//       set matrix height 1,i,l,sin(a(i,l)) * 2
+// next l
+// next i
+// update matrix 1
+// 
+// endfunction
+
+
+
+
+
+// function _GRAVITY(OBJ as integer,TIME as float)
+// 
+//     if PLAYERS(1).JUMP_FLAG = TRUE
+//         inc PLAYERS(1).DELTA_TIME, .01
+//     endif
+//     
+//  	OLDX# = object position x(OBJ)
+//  	OLDY# = object position y(OBJ)
+//  	OLDZ# = object position z(OBJ)
+//  	
+//     NEWX# = OLDX#  + (PLAYERS(1).VELOCITY.X * PLAYERS(1).DELTA_TIME)
+//     NEWY# = OLDY#  + (PLAYERS(1).VELOCITY.Y * PLAYERS(1).DELTA_TIME)
+//     NEWZ# = OLDZ#  + (PLAYERS(1).VELOCITY.Z * PLAYERS(1).DELTA_TIME)
+//     
+//     PLAYERS(1).VELOCITY.X =  PLAYERS(1).VELOCITY.X - (GRAVITATIONAL_FORCE * PLAYERS(1).DELTA_TIME)
+//     PLAYERS(1).VELOCITY.Y =  PLAYERS(1).VELOCITY.Y - (GRAVITATIONAL_FORCE * PLAYERS(1).DELTA_TIME)
+//     POSITION OBJECT OBJ,NEWX#,NEWY# ,NEWZ#
+//     SC_UPDATEOBJECT OBJ
+//     
+// endfunction
+
+
+
+
+
+
+
+
+
+// 
+// 		inc PLAYERS(1).TIME,.01
+//         DEC PLAYERS(1).VELOCITY.Y,2.1
+//         
+// 
+// 		playerx# = object position x(OBJ)
+// 		playery# = object position y(OBJ)
+// 		playerz# = object position z(OBJ)
+//         
+//  		inc playerx#, PLAYERS(1).VELOCITY.X * PLAYERS(1).TIME
+//  		
+//         HIT = sc_OBJECTCOLLISION(PLAYER_1,0)
+//         if HIT = 0         
+// 		    inc playery#, PLAYERS(1).VELOCITY.Y * PLAYERS(1).TIME * 2
+//         endif
+//          
+//         POSITION OBJECT OBJ,playerX#,playerY#,playerZ#       
+//         SC_UPDATEOBJECT PLAYER_1
+//         
+// 		PLAYERS(1).VELOCITY.X = PLAYERS(1).VELOCITY.X / 1.1
+// 		
+// 		if (PLAYERS(1).VELOCITY.Y) < -20 THEN (PLAYERS(1).VELOCITY.Y) = -20
+// 		
+// 		
+//   		if ABS(PLAYERS(1).VELOCITY.X) < 1   then PLAYERS(1).VELOCITY.X = 0
+//   		if ABS(PLAYERS(1).VELOCITY.Z) < 1   then PLAYERS(1).VELOCITY.Z = 0  		
+//   		if ABS(PLAYERS(1).VELOCITY.Y) < 1.4 then PLAYERS(1).VELOCITY.Y = 0
+//   			
+//         if sc_OBJECTCOLLISION(PLAYER_1,0) <> 0 // AND PLAYERS(1).JUMP_FLAG = TRUE
+//             PLAYERS(1).TIME = 0
+//             PLAYERS(1).VELOCITY.Y = 0
+//         endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+REMSTART
+
+// 	MMx = MouseMoveX()
+//   	CamY# = WrapValue(Object Angle Y(p)+MMx): Yrotate Object p,Y#
+//   	ObjX# = Object Position X(p): ObjZ# = Object Position Z(p)
+//   	ObjHeight# = Get Ground Height(1,ObjX#,ObjZ#)
+//   	Position Object p,ObjX#,ObjHeight#+1.0,ObjZ#
+//   	Camheight# = ObjHeight#+ReqCamHeight# + 10
+//   	Set Camera To Follow ObjX#,ObjHeight#,ObjZ#,WrapValue(Object Angle Y(p)+TrackAngle),Camdist#,Camheight#,Camsmooth,ColFlag
+//   	Sync
+
+
+// Camdist# = 15.0
+// TrackAngle = 0: Rem 0 - Behind, 180 - Front, 90 & 270 - Sides
+// ReqCamHeight# = 5.0
+// Camsmooth = 20
+// ColFlag = 0
+
+
+
+//float positionX, positionY;     // Position of the character
+//float velocityX, velocityY;     // Velocity of the character
+//float gravity = 0.5f;           // How strong is gravity
+
+// void Update(float time)
+// {
+//     positionX += velocityX * time;      // Apply horizontal velocity to X position
+//     positionY += velocityY * time;      // Apply vertical velocity to X position
+//     velocityY += gravity * time;        // Apply gravity to vertical velocity
+// }
+		//IF PLAYERS(1).JUMP_FLAG = FALSE THEN INC PLAYERS(1).VELOCITY.Y,.1
+			
+            //IF PLAYERS(1).JUMP_FLAG = TRUE AND PLAYERS(1).VELOCITY.Y < -16.0 THEN PLAYERS(1).VELOCITY.Y = -16.0
+
+          //  IF PLAYERS(1).JUMP_FLAG = TRUE AND ABS(PLAYERS(1).VELOCITY.Y) <1 THEN PLAYERS(1).JUMP_FLAG = FALSE
+          //  IF PLAYERS(1).JUMP_FLAG = FALSE AND OBJECT COLLISION(OBJ,0) = FALSE THEN PLAYERS(1).VELOCITY.Y = PLAYERS(1).VELOCITY.Y * 2
+           
+
+
+// 			IF PLAYERS(1).JUMP_FLAG = TRUE THEN inc PLAYERS(1).VELOCITY.Y,1   
+// 			if PLAYERS(1).VELOCITY.Y = 14 then PLAYERS(1).JUMP_FLAG = FALSE 
+// 			IF PLAYERS(1).JUMP_FLAG = FALSE THEN dec PLAYERS(1).VELOCITY.Y,1   
+// 		
+// 			if OBJECT COLLISION (obj,0) <> 0
+// 			while  OBJECT COLLISION (obj,0) <> 0
+// 			 POSITION OBJECT OBJ,playerx#,OBJECT POSITION y(obj) + 1,playerz#
+// 			endwhile
+// 			 else
+// 			 POSITION OBJECT OBJ,playerx#,playery#,playerz#
+// 			endif
+// 
+
+
+// 	If sc_objectcollision(OBJ,0) <> 0 THEN EXITFUNCTION
+// 		playerx# = object position x(OBJ)
+// 		playery# = object position y(OBJ)
+// 		playerz# = object position z(OBJ)
+// 		dec playerY#
+// 		POSITION OBJECT OBJ,playerx#,playery#,playerz#
+//  
+   // POSITION OBJECT 30,OBJECT POSITION X(PLAYER_1),newyvalue(OBJECT POSITION Y(PLAYER_1),90,20) ,OBJECT POSITION Z(PLAYER_1)
+
+REMEND
